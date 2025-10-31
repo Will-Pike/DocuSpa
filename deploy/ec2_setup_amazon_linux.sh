@@ -20,30 +20,33 @@ echo "📋 Detected OS: $OS $VER"
 echo "📦 Updating system packages..."
 sudo dnf update -y
 
-# Install EPEL repository for additional packages
-echo "📦 Installing EPEL repository..."
-sudo dnf install -y epel-release
-
 # Install essential packages
 echo "🔧 Installing essential packages..."
 sudo dnf groupinstall -y "Development Tools"
+
+# Install packages one by one to handle any that might not be available
+echo "📦 Installing core packages..."
 sudo dnf install -y \
     python3 \
     python3-pip \
     python3-devel \
     git \
     nginx \
-    supervisor \
     htop \
     curl \
     wget \
     unzip \
-    mysql \
-    certbot \
-    python3-certbot-nginx \
     openssl \
     firewalld \
     cronie
+
+# Install certbot and related packages
+echo "🔒 Installing certbot..."
+sudo dnf install -y certbot python3-certbot-nginx || echo "⚠️ Certbot installation failed, will skip SSL setup"
+
+# Install MySQL client
+echo "🗄️ Installing MySQL client..."
+sudo dnf install -y mysql || echo "⚠️ MySQL client installation failed"
 
 # Start and enable firewalld
 echo "🔥 Configuring firewall..."
