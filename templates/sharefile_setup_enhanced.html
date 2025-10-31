@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced ShareFile Setup - DocuSpa</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .progress-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin: 30px 0;
+            padding: 20px 0;
+        }
+        .progress-step {
+            flex: 1;
+            text-align: center;
+            padding: 15px 10px;
+            border-radius: 10px;
+            background: #f8f9fa;
+            margin: 0 5px;
+            border: 2px solid #dee2e6;
+            transition: all 0.3s ease;
+        }
+        .progress-step.active {
+            background: #e8f5e8;
+            border-color: #28a745;
+            color: #28a745;
+            font-weight: bold;
+            transform: scale(1.05);
+        }
+        .progress-step.completed {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        .step {
+            margin: 25px 0;
+            padding: 25px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            background: #f9f9f9;
+            transition: all 0.3s ease;
+        }
+        .step:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #007bff;
+            font-size: 1.4em;
+        }
+        .step.automated {
+            background: linear-gradient(45deg, #e8f5e8, #f0f8f0);
+            border-color: #28a745;
+            border-width: 2px;
+        }
+        .step.automated h3 {
+            color: #28a745;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(0,123,255,0.3);
+        }
+        button:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.4);
+        }
+        .big-action {
+            background: #28a745;
+            font-size: 18px;
+            padding: 18px 35px;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+        .big-action:hover {
+            background: #1e7e34;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+            background: #d4edda;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+            background: #f8d7da;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #f5c6cb;
+        }
+        .warning {
+            color: #856404;
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #ffeaa7;
+        }
+        .loading {
+            background: #e9ecef;
+            border: 1px solid #adb5bd;
+            padding: 15px;
+            border-radius: 8px;
+            color: #495057;
+        }
+        .auth-link {
+            display: inline-block;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white !important;
+            padding: 20px 35px;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 18px;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            transition: all 0.3s ease;
+            text-align: center;
+            display: block;
+            max-width: 300px;
+            margin: 20px auto;
+        }
+        .auth-link:hover {
+            background: linear-gradient(45deg, #1e7e34, #1abc9c);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+        }
+        .quick-tips {
+            background: linear-gradient(45deg, #e3f2fd, #f3e5f5);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #2196f3;
+            margin: 20px 0;
+        }
+        .token-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+            margin: 20px 0;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .status-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            text-align: center;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        input[type="text"]:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 10px rgba(0,123,255,0.2);
+        }
+        .manual-fallback {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border: 2px dashed #dee2e6;
+            margin-top: 30px;
+        }
+        .feature-highlight {
+            background: linear-gradient(45deg, #fff3cd, #f8d7da);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #ffc107;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Enhanced ShareFile Integration</h1>
+        
+        <div class="feature-highlight">
+            <h3>🎉 New Features</h3>
+            <ul>
+                <li><strong>Automatic Token Refresh:</strong> Tokens refresh automatically to keep your connection active</li>
+                <li><strong>One-Click Setup:</strong> Streamlined OAuth2 flow with automatic redirect handling</li>
+                <li><strong>Smart Status Monitoring:</strong> Real-time connection health checking</li>
+                <li><strong>Seamless Experience:</strong> No more manual URL copying or form filling</li>
+            </ul>
+        </div>
+        
+        <div class="progress-indicator">
+            <div class="progress-step active" id="step1">🔍 Check Status</div>
+            <div class="progress-step" id="step2">🔐 Authorize</div>
+            <div class="progress-step" id="step3">🔄 Connect</div>
+            <div class="progress-step" id="step4">✅ Complete</div>
+        </div>
+
+        <div id="status" class="loading">
+            🔄 Checking your ShareFile connection status...
+        </div>
+
+        <div class="step automated" id="automatedFlow" style="display: none;">
+            <h3>✨ One-Click ShareFile Authorization</h3>
+            <p>We've streamlined the ShareFile setup process! Just click the button below and you'll be connected in seconds.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a id="quickAuthLink" href="#" target="_blank" class="auth-link">
+                    🔐 Connect to ShareFile Now
+                </a>
+            </div>
+            
+            <div class="quick-tips">
+                <h4>💡 How it works:</h4>
+                <ol>
+                    <li><strong>Click the button above</strong> - Opens ShareFile in a new tab</li>
+                    <li><strong>Log in if needed</strong> - Use your ShareFile credentials</li>
+                    <li><strong>Click "Allow"</strong> - Authorize DocuSpa to access your files</li>
+                    <li><strong>Automatic return</strong> - You'll be redirected back and setup completes automatically!</li>
+                </ol>
+                
+                <div style="background: rgba(40, 167, 69, 0.1); padding: 15px; border-radius: 8px; margin-top: 15px;">
+                    <strong>🔄 Automatic Token Management:</strong> Once connected, your ShareFile tokens will refresh automatically every few hours, so you'll never lose connection!
+                </div>
+            </div>
+            
+            <div id="authProgress" style="margin-top: 25px;"></div>
+        </div>
+
+        <div class="step" id="tokenManagement" style="display: none;">
+            <h3>🔧 ShareFile Connection Management</h3>
+            <p>Your ShareFile integration is active. Use the tools below to manage your connection.</p>
+            
+            <div class="status-grid">
+                <div class="status-item">
+                    <h4>🔄 Token Status</h4>
+                    <button onclick="refreshToken()">Refresh Now</button>
+                </div>
+                <div class="status-item">
+                    <h4>🧪 Test Connection</h4>
+                    <button onclick="testConnection()">Test Files Access</button>
+                </div>
+                <div class="status-item">
+                    <h4>📊 Check Status</h4>
+                    <button onclick="checkShareFileStatus()">Refresh Status</button>
+                </div>
+                <div class="status-item">
+                    <h4>🔌 Reconnect</h4>
+                    <button onclick="showAutomatedFlow()">Setup Again</button>
+                </div>
+            </div>
+            
+            <div class="token-info" id="tokenDetails"></div>
+            <div id="connectionResults"></div>
+        </div>
+
+        <div class="manual-fallback" id="manualFallback" style="display: none;">
+            <h3>🔧 Manual Setup (Backup Option)</h3>
+            <p>If the automatic setup doesn't work, you can set up ShareFile manually using the steps below.</p>
+            
+            <div class="step">
+                <h4>1. Get Authorization URL</h4>
+                <button onclick="getAuthUrl()">Generate Authorization URL</button>
+                <div id="authUrlResult" style="margin-top: 15px;"></div>
+            </div>
+
+            <div class="step">
+                <h4>2. Complete Manual Setup</h4>
+                <p>After visiting the authorization URL and granting permission, enter the callback details:</p>
+                
+                <div style="margin: 15px 0;">
+                    <label><strong>Authorization Code:</strong></label>
+                    <input type="text" id="code" placeholder="Enter the code from ShareFile redirect URL">
+                </div>
+                
+                <div style="margin: 15px 0;">
+                    <label><strong>Subdomain:</strong></label>
+                    <input type="text" id="subdomain" placeholder="Your ShareFile subdomain (e.g., 'mycompany')">
+                </div>
+                
+                <div style="margin: 15px 0;">
+                    <label><strong>API Control Plane:</strong></label>
+                    <input type="text" id="apicp" placeholder="API endpoint (e.g., 'sf-api.com')">
+                </div>
+                
+                <button onclick="completeManualOAuth()" class="big-action">Complete Manual Setup</button>
+                <div id="manualResult" style="margin-top: 15px;"></div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px;">
+            <button onclick="window.location.href='/dashboard'" class="big-action">
+                📊 Return to Dashboard
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 1;
+        let setupInProgress = false;
+
+        // Initialize on page load
+        window.onload = function() {
+            checkShareFileStatus();
+            
+            // Handle automatic callback from ShareFile
+            if (window.location.search.includes('code=')) {
+                handleAutomaticCallback();
+            }
+        };
+
+        function updateProgressStep(step) {
+            for (let i = 1; i <= 4; i++) {
+                const element = document.getElementById(`step${i}`);
+                element.className = 'progress-step';
+                if (i < step) element.classList.add('completed');
+                if (i === step) element.classList.add('active');
+            }
+            currentStep = step;
+        }
+
+        async function checkShareFileStatus() {
+            try {
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    document.getElementById('status').innerHTML = 
+                        '<div class="error">⚠️ Please <a href="/" style="color: #dc3545; font-weight: bold;">log in</a> to continue with ShareFile setup.</div>';
+                    return;
+                }
+
+                const response = await fetch('/admin/sharefile/status', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                const statusDiv = document.getElementById('status');
+                
+                if (data.status === 'connected') {
+                    statusDiv.innerHTML = `
+                        <div class="success">
+                            🎉 ShareFile Connected & Healthy!
+                            <div style="margin-top: 10px;">
+                                <strong>📍 Subdomain:</strong> ${data.subdomain} &nbsp;|&nbsp; 
+                                <strong>🌐 API:</strong> ${data.apicp} &nbsp;|&nbsp;
+                                <strong>🔄 Token:</strong> ${data.token_valid ? '🟢 Valid' : '🟡 Refreshing...'}
+                            </div>
+                            <div style="margin-top: 8px; color: #666;">
+                                <small>Last Updated: ${data.last_refreshed ? new Date(data.last_refreshed).toLocaleString() : 'Initial setup'}</small>
+                            </div>
+                        </div>
+                    `;
+                    updateProgressStep(4);
+                    showTokenManagement(data);
+                } else if (data.status === 'token_invalid') {
+                    statusDiv.innerHTML = `
+                        <div class="warning">
+                            ⚠️ ShareFile Connection Needs Refresh
+                            <div style="margin-top: 10px;">Your ShareFile connection exists but the token has expired. This is normal and happens automatically.</div>
+                        </div>
+                    `;
+                    updateProgressStep(3);
+                    showTokenManagement(data);
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="error">
+                            🔌 ShareFile Not Connected
+                            <div style="margin-top: 10px;">Let's get you connected with our enhanced one-click process!</div>
+                        </div>
+                    `;
+                    updateProgressStep(2);
+                    showAutomatedFlow();
+                }
+            } catch (error) {
+                document.getElementById('status').innerHTML = 
+                    '<div class="error">❌ Error checking ShareFile status. Trying manual setup...</div>';
+                console.error('Status check error:', error);
+                showManualFallback();
+            }
+        }
+
+        function showAutomatedFlow() {
+            document.getElementById('automatedFlow').style.display = 'block';
+            document.getElementById('manualFallback').style.display = 'none';
+            document.getElementById('tokenManagement').style.display = 'none';
+            getQuickAuthUrl();
+        }
+
+        function showTokenManagement(data = {}) {
+            document.getElementById('tokenManagement').style.display = 'block';
+            document.getElementById('automatedFlow').style.display = 'none';
+            document.getElementById('manualFallback').style.display = 'none';
+            
+            // Show token details
+            if (data.subdomain) {
+                document.getElementById('tokenDetails').innerHTML = `
+                    <h4>📋 Connection Details</h4>
+                    <div class="status-grid">
+                        <div><strong>Subdomain:</strong><br>${data.subdomain}</div>
+                        <div><strong>API Endpoint:</strong><br>${data.apicp}</div>
+                        <div><strong>Token Status:</strong><br>${data.token_valid ? '🟢 Valid' : '🟡 Needs Refresh'}</div>
+                        <div><strong>Last Updated:</strong><br>${data.last_refreshed ? new Date(data.last_refreshed).toLocaleDateString() : 'Initial'}</div>
+                    </div>
+                `;
+            }
+        }
+
+        function showManualFallback() {
+            document.getElementById('manualFallback').style.display = 'block';
+            document.getElementById('automatedFlow').style.display = 'none';
+            document.getElementById('tokenManagement').style.display = 'none';
+        }
+
+        async function getQuickAuthUrl() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch('/admin/sharefile/auth-url', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                // Set up the quick auth link
+                const authLink = document.getElementById('quickAuthLink');
+                authLink.href = data.authorization_url;
+                
+                // Add click tracking
+                authLink.onclick = function() {
+                    document.getElementById('authProgress').innerHTML = `
+                        <div class="loading">
+                            🔄 Opening ShareFile authorization...
+                            <div style="margin-top: 10px;">Complete the authorization in the new tab and you'll be redirected back automatically!</div>
+                        </div>
+                    `;
+                    updateProgressStep(3);
+                };
+                
+            } catch (error) {
+                document.getElementById('authProgress').innerHTML = 
+                    `<div class="error">❌ Error getting authorization URL: ${error.message}</div>`;
+                showManualFallback();
+            }
+        }
+
+        async function refreshToken() {
+            document.getElementById('connectionResults').innerHTML = 
+                '<div class="loading">🔄 Refreshing ShareFile token...</div>';
+            
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch('/admin/sharefile/refresh-token', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('connectionResults').innerHTML = 
+                        `<div class="success">✅ Token refreshed successfully! Updated at ${new Date().toLocaleString()}</div>`;
+                    setTimeout(checkShareFileStatus, 1500);
+                } else {
+                    document.getElementById('connectionResults').innerHTML = 
+                        `<div class="error">❌ Refresh failed: ${data.message}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('connectionResults').innerHTML = 
+                    `<div class="error">❌ Refresh error: ${error.message}</div>`;
+            }
+        }
+
+        async function testConnection() {
+            document.getElementById('connectionResults').innerHTML = 
+                '<div class="loading">🧪 Testing ShareFile API connection...</div>';
+            
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch('/admin/sharefile/test-connection', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('connectionResults').innerHTML = `
+                        <div class="success">
+                            ✅ ShareFile API Connection Successful! 
+                            <br><br><strong>📁 Home Folder:</strong> ${data.home_folder.name} (ID: ${data.home_folder.id})
+                            <br><strong>🌐 Endpoint:</strong> ${data.connection_details.subdomain}.${data.connection_details.apicp}
+                            <br><strong>🔄 Last Token Refresh:</strong> ${data.connection_details.last_refreshed ? new Date(data.connection_details.last_refreshed).toLocaleString() : 'Initial setup'}
+                            <br><br><em>Your ShareFile integration is working perfectly!</em>
+                        </div>
+                    `;
+                } else if (data.status === 'not_authenticated') {
+                    document.getElementById('connectionResults').innerHTML = `
+                        <div class="error">
+                            ⚠️ Not Connected: ${data.message}
+                            <br><br>Please complete the OAuth2 setup above first.
+                        </div>
+                    `;
+                } else {
+                    let errorHtml = `<div class="error">❌ Connection test failed: ${data.message}`;
+                    
+                    if (data.debug_info) {
+                        errorHtml += `
+                            <br><br><strong>🔍 Debug Information:</strong>
+                            <br>• <strong>Subdomain:</strong> ${data.debug_info.subdomain}
+                            <br>• <strong>API Endpoint:</strong> ${data.debug_info.apicp}
+                            <br>• <strong>Test URL:</strong> ${data.debug_info.endpoint_tested}
+                        `;
+                        if (data.debug_info.error_type) {
+                            errorHtml += `<br>• <strong>Error Type:</strong> ${data.debug_info.error_type}`;
+                        }
+                        if (data.debug_info.has_refresh_token !== undefined) {
+                            errorHtml += `<br>• <strong>Has Refresh Token:</strong> ${data.debug_info.has_refresh_token}`;
+                            errorHtml += `<br>• <strong>Last Refreshed:</strong> ${data.debug_info.last_refreshed || 'Never'}`;
+                        }
+                    }
+                    
+                    if (data.recommendation) {
+                        errorHtml += `<br><br><strong>💡 Recommendation:</strong><br>${data.recommendation}`;
+                    }
+                    
+                    errorHtml += '</div>';
+                    document.getElementById('connectionResults').innerHTML = errorHtml;
+                }
+            } catch (error) {
+                document.getElementById('connectionResults').innerHTML = 
+                    `<div class="error">❌ Test error: ${error.message}</div>`;
+            }
+        }
+
+        // Handle automatic callback
+        function handleAutomaticCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const subdomain = urlParams.get('subdomain'); 
+            const apicp = urlParams.get('apicp');
+            const appcp = urlParams.get('appcp');
+            
+            if (code && subdomain && apicp) {
+                updateProgressStep(3);
+                document.getElementById('status').innerHTML = 
+                    '<div class="loading">🔄 Processing ShareFile authorization... Almost done!</div>';
+                
+                completeAutomaticOAuth(code, subdomain, apicp, appcp);
+            }
+        }
+
+        async function completeAutomaticOAuth(code, subdomain, apicp, appcp) {
+            if (setupInProgress) return;
+            setupInProgress = true;
+            
+            try {
+                const token = localStorage.getItem('access_token');
+                const params = new URLSearchParams({
+                    code: code,
+                    subdomain: subdomain,
+                    apicp: apicp,
+                    state: 'admin_setup'
+                });
+                
+                if (appcp) params.append('appcp', appcp);
+
+                const response = await fetch('/admin/sharefile/callback?' + params, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('status').innerHTML = `
+                        <div class="success">
+                            🎉 ShareFile Integration Complete!
+                            <div style="margin-top: 10px;">
+                                <strong>✅ Connected to:</strong> ${data.subdomain}.${data.apicp}
+                                <br><strong>🔄 Auto-refresh:</strong> Enabled
+                                <br><strong>📁 File access:</strong> Ready
+                            </div>
+                        </div>
+                    `;
+                    updateProgressStep(4);
+                    
+                    // Clean URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    
+                    setTimeout(() => {
+                        showTokenManagement(data);
+                    }, 2000);
+                } else {
+                    throw new Error(data.message || 'Setup failed');
+                }
+                
+            } catch (error) {
+                document.getElementById('status').innerHTML = 
+                    `<div class="error">❌ Automatic setup failed: ${error.message}</div>`;
+                showManualFallback();
+            } finally {
+                setupInProgress = false;
+            }
+        }
+
+        // Manual fallback functions
+        async function getAuthUrl() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch('/admin/sharefile/auth-url', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                document.getElementById('authUrlResult').innerHTML = `
+                    <div class="success">
+                        <strong>Authorization URL Generated:</strong>
+                        <br><a href="${data.authorization_url}" target="_blank" class="auth-link">Open ShareFile Authorization</a>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('authUrlResult').innerHTML = 
+                    `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function completeManualOAuth() {
+            const code = document.getElementById('code').value;
+            const subdomain = document.getElementById('subdomain').value;
+            const apicp = document.getElementById('apicp').value;
+
+            if (!code || !subdomain || !apicp) {
+                document.getElementById('manualResult').innerHTML = 
+                    '<div class="error">❌ Please fill in all required fields</div>';
+                return;
+            }
+
+            document.getElementById('manualResult').innerHTML = 
+                '<div class="loading">🔄 Setting up ShareFile connection...</div>';
+
+            completeAutomaticOAuth(code, subdomain, apicp);
+        }
+    </script>
+</body>
+</html>

@@ -12,7 +12,7 @@
             background-color: #f5f5f5;
         }
         .header {
-            background-color: #2c5aa0;
+            background-color: #038ba3;
             color: white;
             padding: 1rem 2rem;
             display: flex;
@@ -53,7 +53,7 @@
         }
         .stat-card h3 {
             margin: 0 0 0.5rem 0;
-            color: #2c5aa0;
+            color: #038ba3;
         }
         .stat-card .number {
             font-size: 2rem;
@@ -68,7 +68,7 @@
             margin-bottom: 2rem;
         }
         .btn-primary {
-            background-color: #2c5aa0;
+            background-color: #038ba3;
             color: white;
             padding: 0.75rem 1.5rem;
             border: none;
@@ -200,7 +200,32 @@
         <div class="actions">
             <h3>Quick Actions</h3>
             <button class="btn-primary" onclick="openAddClientModal()">Add New Client</button>
+            <button class="btn-primary" onclick="setupShareFile()">Setup ShareFile OAuth2</button>
             <button class="btn-primary" onclick="testShareFileConnection()">Test ShareFile Connection</button>
+        </div>
+
+        <!-- ShareFile Files -->
+        <div class="clients-table">
+            <h3>ShareFile Documents</h3>
+            <div id="sharefileStatus" style="padding: 1rem; margin-bottom: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+                Loading ShareFile status...
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <!-- Folders -->
+                <div style="flex: 1;">
+                    <h4>Folders</h4>
+                    <div id="sharefileFolders" style="max-height: 300px; overflow-y: auto;">
+                        Loading folders...
+                    </div>
+                </div>
+                <!-- Files -->
+                <div style="flex: 2;">
+                    <h4>Files</h4>
+                    <div id="sharefileFiles" style="max-height: 300px; overflow-y: auto;">
+                        Loading files...
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Clients Table -->
@@ -345,6 +370,10 @@
             }
         });
 
+        function setupShareFile() {
+            window.open('/sharefile-setup', '_blank');
+        }
+
         async function testShareFileConnection() {
             try {
                 const response = await fetch('/admin/sharefile/test', {
@@ -354,10 +383,12 @@
                 });
                 
                 const result = await response.json();
-                if (result.authenticated) {
+                if (result.status === 'oauth2_required') {
+                    alert('ShareFile requires OAuth2 setup. Click "Setup ShareFile OAuth2" button first.');
+                } else if (result.authenticated) {
                     alert('ShareFile connection successful!');
                 } else {
-                    alert('ShareFile connection failed: ' + result.error);
+                    alert('ShareFile connection failed: ' + (result.error || result.message));
                 }
             } catch (error) {
                 alert('Error testing ShareFile connection');
@@ -369,8 +400,111 @@
             window.location.href = '/';
         }
 
-        // Load dashboard on page load
+        // Enhanced ShareFile files loading with auto-refresh features
+        async function loadShareFileFiles() {
+            try {
+                const response = await fetch('/admin/sharefile/files', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                // Update status with enhanced information
+                const statusDiv = document.getElementById('sharefileStatus');
+                if (data.status === 'success') {
+                    let statusText = `<span style="color: #28a745;">✅ ShareFile Connected</span> - ${data.total_items} items found`;
+                    if (data.token_refreshed) {
+                        statusText += ` <span style="color: #007bff; font-size: 0.875rem;">(🔄 Token auto-refreshed)</span>`;
+                    }
+                    statusDiv.innerHTML = statusText;
+                } else if (data.status === 'not_authenticated') {
+                    statusDiv.innerHTML = `<span style="color: #ffc107;">⚠️ ShareFile Not Connected</span> - <a href="/sharefile-setup" target="_blank" style="color: #007bff; font-weight: bold;">🚀 Enhanced Setup</a>`;
+                } else if (data.status === 'authentication_failed') {
+                    statusDiv.innerHTML = `<span style="color: #dc3545;">🔄 Token Refresh Failed</span> - <a href="/sharefile-setup" target="_blank" style="color: #007bff;">Reconnect ShareFile</a>`;
+                } else {
+                    statusDiv.innerHTML = `<span style="color: #dc3545;">❌ ShareFile Error</span> - ${data.message}`;
+                }
+                
+                // Render folders with enhanced UI
+                const foldersDiv = document.getElementById('sharefileFolders');
+                if (data.folders && data.folders.length > 0) {
+                    foldersDiv.innerHTML = data.folders.map(folder => `
+                        <div style="padding: 0.75rem; border: 1px solid #ddd; margin: 0.25rem 0; border-radius: 6px; cursor: pointer; background: #f8f9fa; transition: all 0.2s;" 
+                             onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f8f9fa'"
+                             onclick="loadFolderContents('${folder.id}')">
+                            <div style="display: flex; align-items: center;">
+                                <span style="margin-right: 8px; font-size: 1.2em;">📁</span>
+                                <span style="font-weight: 500;">${folder.name}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    foldersDiv.innerHTML = '<div style="color: #666; font-style: italic; padding: 1rem; text-align: center;">No folders found</div>';
+                }
+                
+                // Render files with enhanced UI
+                const filesDiv = document.getElementById('sharefileFiles');
+                if (data.files && data.files.length > 0) {
+                    filesDiv.innerHTML = data.files.map(file => `
+                        <div style="padding: 0.75rem; border: 1px solid #ddd; margin: 0.25rem 0; border-radius: 6px; background: #f8f9fa; transition: all 0.2s;"
+                             onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f8f9fa'">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 500; display: flex; align-items: center;">
+                                        <span style="margin-right: 8px; font-size: 1.1em;">📄</span>
+                                        ${file.name}
+                                    </div>
+                                    <div style="font-size: 0.875rem; color: #666; margin-top: 4px;">
+                                        📏 ${formatFileSize(file.size)} | 📅 ${formatDate(file.modified)}
+                                    </div>
+                                </div>
+                                <div style="margin-left: 10px;">
+                                    <button onclick="assignFileToSpa('${file.id}', '${file.name}')" 
+                                            style="background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
+                                        Assign
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    filesDiv.innerHTML = '<div style="color: #666; font-style: italic; padding: 1rem; text-align: center;">No files found</div>';
+                }
+                
+            } catch (error) {
+                document.getElementById('sharefileStatus').innerHTML = `<span style="color: #dc3545;">❌ Error loading ShareFile</span>`;
+                console.error('ShareFile loading error:', error);
+            }
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'Unknown';
+            return new Date(dateString).toLocaleDateString();
+        }
+        
+        function loadFolderContents(folderId) {
+            // TODO: Implement folder navigation - Enhanced coming soon!
+            alert(`📁 Loading folder ${folderId}\n\n🚀 Enhanced folder navigation coming in the next update!\n\nFeatures planned:\n• Browse subfolders\n• File previews\n• Bulk operations\n• Search within folders`);
+        }
+        
+        function assignFileToSpa(fileId, fileName) {
+            // TODO: Implement file assignment to spa clients
+            alert(`📄 Assign File: ${fileName}\n\n🔗 File ID: ${fileId}\n\n🚀 File assignment to spa clients will be implemented next!\n\nFeatures planned:\n• Select target spa client\n• Assign for digital signing\n• Track document status\n• Automated notifications`);
+        }
+
+        // Load dashboard and ShareFile on page load
         loadDashboard();
+        loadShareFileFiles();
     </script>
 </body>
 </html>
