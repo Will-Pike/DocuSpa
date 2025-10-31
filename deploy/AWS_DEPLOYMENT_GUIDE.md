@@ -11,7 +11,9 @@ This guide will help you deploy DocuSpa on AWS EC2 with all necessary infrastruc
 ## Step 1: Launch EC2 Instance
 
 ### Instance Configuration
-- **AMI**: Ubuntu Server 22.04 LTS (64-bit x86)
+- **AMI Options**:
+  - **Ubuntu Server 22.04 LTS** (recommended)
+  - **Amazon Linux 2023** (also supported)
 - **Instance Type**: 
   - Development: `t3.micro` (1 vCPU, 1 GB RAM) - Free tier eligible
   - Production: `t3.small` or larger (2 vCPU, 2 GB RAM+)
@@ -58,15 +60,30 @@ ssh -i "your-key.pem" ubuntu@your-elastic-ip
 
 Once connected to your instance:
 
+### Option A: Auto-detect OS (Recommended)
 ```bash
-# Download the deployment script
+# Download auto-deployment script
+wget https://raw.githubusercontent.com/Will-Pike/DocuSpa/main/deploy/auto_deploy.sh
+
+# Make it executable and run
+chmod +x auto_deploy.sh
+sudo ./auto_deploy.sh
+```
+
+### Option B: Manual OS Selection
+
+**For Ubuntu/Debian:**
+```bash
 wget https://raw.githubusercontent.com/Will-Pike/DocuSpa/main/deploy/ec2_setup.sh
-
-# Make it executable
 chmod +x ec2_setup.sh
-
-# Run the deployment
 sudo ./ec2_setup.sh
+```
+
+**For Amazon Linux/RHEL/CentOS:**
+```bash
+wget https://raw.githubusercontent.com/Will-Pike/DocuSpa/main/deploy/ec2_setup_amazon_linux.sh
+chmod +x ec2_setup_amazon_linux.sh
+sudo ./ec2_setup_amazon_linux.sh
 ```
 
 The script will:
@@ -257,14 +274,16 @@ For issues with:
 ```bash
 # 1. Connect to EC2
 ssh -i "your-key.pem" ubuntu@your-elastic-ip
+# or: ssh -i "your-key.pem" ec2-user@your-elastic-ip  # for Amazon Linux
 
-# 2. Download and run deployment
-wget https://raw.githubusercontent.com/Will-Pike/DocuSpa/main/deploy/ec2_setup.sh
-chmod +x ec2_setup.sh
-sudo ./ec2_setup.sh
+# 2. Download and run auto-deployment (detects OS automatically)
+wget https://raw.githubusercontent.com/Will-Pike/DocuSpa/main/deploy/auto_deploy.sh
+chmod +x auto_deploy.sh
+sudo ./auto_deploy.sh
 
 # 3. Configure domain (replace with your domain)
-sudo nano /etc/nginx/sites-available/docuspa
+# Ubuntu: sudo nano /etc/nginx/sites-available/docuspa
+# Amazon Linux: sudo nano /etc/nginx/conf.d/docuspa.conf
 sudo systemctl restart nginx
 sudo certbot --nginx -d your-domain.com
 
