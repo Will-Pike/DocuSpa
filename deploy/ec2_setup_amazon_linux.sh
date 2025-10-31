@@ -33,7 +33,6 @@ sudo dnf install -y \
     git \
     nginx \
     htop \
-    curl \
     wget \
     unzip \
     openssl \
