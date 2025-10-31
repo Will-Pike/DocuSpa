@@ -1,0 +1,84 @@
+[Unit]
+Description=DocuSpa FastAPI Application
+Documentation=https://github.com/Will-Pike/DocuSpa
+After=network.target mysql.service
+Wants=network-online.target
+Requires=network.target
+
+[Service]
+Type=simple
+User=docuspa
+Group=docuspa
+WorkingDirectory=/opt/docuspa
+Environment="PATH=/opt/docuspa/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=/opt/docuspa"
+Environment="PYTHONUNBUFFERED=1"
+
+# Start command
+ExecStart=/opt/docuspa/venv/bin/python main.py
+
+# Reload command (graceful restart)
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Stop command (graceful shutdown)
+ExecStop=/bin/kill -TERM $MAINPID
+
+# Process management
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStartSec=30
+TimeoutStopSec=30
+TimeoutReloadSec=10
+
+# Restart behavior
+Restart=always
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHostname=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RemoveIPC=true
+RestrictNamespaces=true
+
+# Writable directories for the application
+ReadWritePaths=/opt/docuspa
+ReadWritePaths=/var/log/docuspa
+ReadWritePaths=/tmp
+
+# Network access
+IPAddressDeny=any
+IPAddressAllow=localhost
+IPAddressAllow=10.0.0.0/8
+IPAddressAllow=172.16.0.0/12
+IPAddressAllow=192.168.0.0/16
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=docuspa
+SyslogFacility=daemon
+SyslogLevel=info
+
+# Environment file
+EnvironmentFile=-/opt/docuspa/.env
+
+[Install]
+WantedBy=multi-user.target
+Alias=docuspa.service
