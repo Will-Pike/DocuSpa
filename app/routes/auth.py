@@ -104,3 +104,22 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "email": current_user.email,
         "role": current_user.role.value
     }
+
+@router.get("/test")
+async def test_auth_service():
+    """Test endpoint to verify auth service is working"""
+    try:
+        # Test that we can import and use auth functions
+        from app.services.auth import get_password_hash, verify_password
+        test_hash = get_password_hash("test123")
+        test_verify = verify_password("test123", test_hash)
+        return {
+            "status": "ok",
+            "message": "Auth service is working",
+            "bcrypt_test": test_verify
+        }
+    except Exception as e:
+        return {
+            "status": "error", 
+            "message": f"Auth service error: {str(e)}"
+        }

@@ -90,10 +90,44 @@ source venv/bin/activate
 # Upgrade pip and install dependencies
 echo "📦 Installing Python dependencies..."
 pip install --upgrade pip
-pip install -r requirements.txt
+
+# Install build dependencies first
+pip install wheel setuptools
+
+# Install dependencies with verbose output for debugging
+echo "📦 Installing requirements with verbose output..."
+pip install -r requirements.txt -v
 
 # Install additional production dependencies
 pip install gunicorn uvicorn[standard]
+
+# Verify critical imports work
+echo "🧪 Testing critical imports..."
+python3 -c "
+try:
+    from passlib.context import CryptContext
+    from jose import jwt
+    print('✅ Passlib and jose imports successful')
+except ImportError as e:
+    print(f'❌ Import error: {e}')
+    exit(1)
+"
+
+# Create static directory if it doesn't exist
+mkdir -p static
+
+# Verify auth service has all required functions
+echo "🔍 Verifying auth service integrity..."
+python3 -c "
+import sys
+sys.path.append('/opt/docuspa')
+try:
+    from app.services.auth import verify_password, create_access_token, verify_token, get_password_hash
+    print('✅ All auth functions available')
+except ImportError as e:
+    print(f'❌ Missing auth function: {e}')
+    exit(1)
+"
 
 echo "✅ Application setup completed as docuspa user"
 EOF
@@ -179,13 +213,11 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
-
-    # Gzip compression
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;    # Gzip compression
     gzip on;
     gzip_vary on;
     gzip_min_length 1024;
-    gzip_proxied expired no-cache no-store private must-revalidate;
+    gzip_proxied expired no-cache no-store private auth;
     gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
 
     # Static files

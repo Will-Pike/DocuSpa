@@ -1,3 +1,17 @@
+#!/bin/bash
+
+# Fix auth.py bcrypt 72-byte limitation issue
+# Run this script on the EC2 instance
+
+set -e
+
+echo "🔧 Fixing auth.py bcrypt 72-byte limitation..."
+
+# Backup current auth.py
+sudo cp /opt/docuspa/app/services/auth.py /opt/docuspa/app/services/auth.py.backup.$(date +%s)
+
+# Create the fixed auth.py content
+sudo tee /opt/docuspa/app/services/auth.py > /dev/null << 'EOF'
 import os
 from datetime import datetime, timedelta
 from typing import Optional
@@ -64,3 +78,31 @@ def verify_token(token: str) -> Optional[str]:
     except JWTError as e:
         print(f"JWT verification error: {e}")
         return None
+EOF
+
+echo "✅ Fixed auth.py with bcrypt 72-byte limitation handling"
+
+# Set proper ownership and permissions
+sudo chown docuspa:docuspa /opt/docuspa/app/services/auth.py
+sudo chmod 644 /opt/docuspa/app/services/auth.py
+
+echo "🔄 Restarting DocuSpa service..."
+sudo systemctl restart docuspa
+
+echo "⏳ Waiting for service to start..."
+sleep 5
+
+echo "📊 Checking service status..."
+sudo systemctl status docuspa --no-pager
+
+echo "🔍 Checking recent logs..."
+sudo journalctl -u docuspa -n 20 --no-pager
+
+echo ""
+echo "🎉 Auth.py has been fixed with bcrypt 72-byte limitation handling!"
+echo "The application should now handle password authentication properly."
+echo ""
+echo "Test the login at: http://3.144.174.133"
+echo ""
+echo "If you still have issues, check the logs with:"
+echo "sudo journalctl -u docuspa -f"
