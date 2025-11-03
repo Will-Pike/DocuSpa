@@ -339,12 +339,16 @@ async def get_sharefile_files(
     # Get files and folders
     try:
         if folder_id:
+            # Getting specific folder contents
             items_response = sf_api.get_items(folder_id)
         else:
-            items_response = sf_api.get_home_folder()
-            # Get children of home folder
-            if items_response and items_response.get('Id'):
-                items_response = sf_api.get_items(items_response['Id'])
+            # Getting home folder and its contents
+            home_folder = sf_api.get_home_folder()
+            if home_folder and home_folder.get('Id'):
+                # Get children of the home folder
+                items_response = sf_api.get_items(home_folder['Id'])
+            else:
+                items_response = None
         
         if not items_response:
             return {
@@ -354,26 +358,90 @@ async def get_sharefile_files(
                 "folders": []
             }
         
-        # Separate files and folders
-        items = items_response.get('value', []) if isinstance(items_response, dict) else []
+        # Handle different response formats from ShareFile API
+        items = []
+        if isinstance(items_response, dict):
+            # Standard API response with 'value' array
+            items = items_response.get('value', [])
+            # Some responses might have 'Children' instead
+            if not items:
+                items = items_response.get('Children', [])
+            # If still no items, check if the response itself is the item list
+            if not items and 'Id' in items_response:
+                items = [items_response]
+        elif isinstance(items_response, list):
+            # Direct array response
+            items = items_response
+        
+        # Debug logging (remove in production)
+        print(f"ShareFile API Debug: Got {len(items)} items, response type: {type(items_response)}")
+        if items:
+            for item in items[:3]:  # Log first 3 items
+                print(f"  Item: {item.get('Name')} (Type: {item.get('Type')}, Size: {item.get('FileSizeBytes', 'N/A')})")
         
         files = []
         folders = []
         
         for item in items:
+            # Get item type - ShareFile uses different type values
+            item_type = item.get('Type', '').lower()
+            item_name = item.get('Name', 'Unknown')
+            item_size = item.get('FileSizeBytes', 0)
+            
+            # Format size for display
+            if item_size > 0:
+                if item_size >= 1024 * 1024 * 1024:  # GB
+                    size_display = f"{item_size / (1024 * 1024 * 1024):.2f} GB"
+                elif item_size >= 1024 * 1024:  # MB
+                    size_display = f"{item_size / (1024 * 1024):.2f} MB"
+                elif item_size >= 1024:  # KB
+                    size_display = f"{item_size / 1024:.2f} KB"
+                else:  # Bytes
+                    size_display = f"{item_size} bytes"
+            else:
+                size_display = "Unknown size"
+            
+            # Format dates
+            created_date = item.get('CreationDate', '')
+            modified_date = item.get('LastWriteTime', item.get('ModificationDate', ''))
+            
+            try:
+                if created_date:
+                    from datetime import datetime
+                    created_dt = datetime.fromisoformat(created_date.replace('Z', '+00:00'))
+                    created_display = created_dt.strftime('%Y-%m-%d %H:%M')
+                else:
+                    created_display = 'Unknown'
+            except:
+                created_display = 'Unknown'
+            
+            try:
+                if modified_date:
+                    from datetime import datetime
+                    modified_dt = datetime.fromisoformat(modified_date.replace('Z', '+00:00'))
+                    modified_display = modified_dt.strftime('%Y-%m-%d %H:%M')
+                else:
+                    modified_display = 'Unknown'
+            except:
+                modified_display = 'Unknown'
+            
             item_data = {
                 "id": item.get('Id'),
-                "name": item.get('Name'),
+                "name": item_name,
                 "type": item.get('Type'),
-                "size": item.get('FileSizeBytes', 0),
-                "created": item.get('CreationDate'),
-                "modified": item.get('LastWriteTime'),
-                "download_url": item.get('url') if item.get('Type') != 'Folder' else None
+                "size": item_size,
+                "size_display": size_display,
+                "created": created_display,
+                "modified": modified_display,
+                "download_url": item.get('url', item.get('Uri')) if item_type != 'folder' else None,
+                "is_folder": item_type == 'folder'
             }
             
-            if item.get('Type') == 'Folder':
+            # Categorize items - ShareFile folders have Type="Folder"
+            if item_type == 'folder':
                 folders.append(item_data)
             else:
+                # Everything else is treated as a file
                 files.append(item_data)
         
         return {
