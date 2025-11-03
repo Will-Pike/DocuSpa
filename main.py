@@ -72,6 +72,11 @@ async def sharefile_setup(request: Request):
 async def sharefile_setup_old(request: Request):
     return templates.TemplateResponse("sharefile_setup.html", {"request": request})
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "message": "DocuSpa is running"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
