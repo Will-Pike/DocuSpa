@@ -603,13 +603,25 @@
         
         async function downloadFile(fileId, fileName) {
             try {
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    alert('❌ Authentication required. Please log in again.');
+                    return;
+                }
                 const response = await fetch(`/admin/sharefile/file/${fileId}/download-url`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 });
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        alert('❌ Authentication expired. Please log in again.');
+                        return;
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
                 const data = await response.json();
                 
@@ -641,7 +653,11 @@
 
         async function viewFile(fileId, fileName) {
             try {
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    alert('❌ Authentication required. Please log in again.');
+                    return;
+                }
                 
                 // First get file info to check if it can be previewed
                 const infoResponse = await fetch(`/admin/sharefile/file/${fileId}/info`, {
@@ -650,6 +666,14 @@
                         'Content-Type': 'application/json'
                     }
                 });
+                
+                if (!infoResponse.ok) {
+                    if (infoResponse.status === 401) {
+                        alert('❌ Authentication expired. Please log in again.');
+                        return;
+                    }
+                    throw new Error(`HTTP ${infoResponse.status}: ${infoResponse.statusText}`);
+                }
                 
                 const fileInfo = await infoResponse.json();
                 
@@ -663,6 +687,14 @@
                             'Content-Type': 'application/json'
                         }
                     });
+                    
+                    if (!urlResponse.ok) {
+                        if (urlResponse.status === 401) {
+                            alert('❌ Authentication expired. Please log in again.');
+                            return;
+                        }
+                        throw new Error(`HTTP ${urlResponse.status}: ${urlResponse.statusText}`);
+                    }
                     
                     const urlData = await urlResponse.json();
                     
