@@ -460,10 +460,21 @@
                                         📏 ${formatFileSize(file.size)} | 📅 ${formatDate(file.modified)}
                                     </div>
                                 </div>
-                                <div style="margin-left: 10px;">
+                                <div style="display: flex; gap: 5px; margin-left: 10px;">
+                                    <button onclick="downloadFile('${file.id}', '${file.name}')" 
+                                            style="background: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;" 
+                                            title="Download file">
+                                        ⬇️
+                                    </button>
+                                    <button onclick="viewFile('${file.id}', '${file.name}')" 
+                                            style="background: #17a2b8; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;" 
+                                            title="View file">
+                                        👁️
+                                    </button>
                                     <button onclick="assignFileToSpa('${file.id}', '${file.name}')" 
-                                            style="background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
-                                        Assign
+                                            style="background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;" 
+                                            title="Assign to SPA">
+                                        ✉️
                                     </button>
                                 </div>
                             </div>
@@ -556,10 +567,21 @@
                                             📏 ${file.size_display || formatFileSize(file.size)} | 📅 ${file.modified || 'Unknown'}
                                         </div>
                                     </div>
-                                    <div style="margin-left: 10px;">
+                                    <div style="display: flex; gap: 5px; margin-left: 10px;">
+                                        <button onclick="downloadFile('${file.id}', '${file.name}')" 
+                                                style="background: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;" 
+                                                title="Download file">
+                                            ⬇️
+                                        </button>
+                                        <button onclick="viewFile('${file.id}', '${file.name}')" 
+                                                style="background: #17a2b8; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;" 
+                                                title="View file">
+                                            👁️
+                                        </button>
                                         <button onclick="assignFileToSpa('${file.id}', '${file.name}')" 
-                                                style="background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
-                                            Assign
+                                                style="background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;" 
+                                                title="Assign to SPA">
+                                            ✉️
                                         </button>
                                     </div>
                                 </div>
@@ -579,6 +601,119 @@
             }
         }
         
+        async function downloadFile(fileId, fileName) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/admin/sharefile/file/${fileId}/download-url`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.download_url) {
+                    // Create a temporary link to trigger download
+                    const link = document.createElement('a');
+                    link.href = data.download_url;
+                    link.download = fileName;
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    // Show success message
+                    const statusDiv = document.getElementById('sharefileStatus');
+                    const originalContent = statusDiv.innerHTML;
+                    statusDiv.innerHTML = `<span style="color: #28a745;">✅ Downloading: ${fileName}</span>`;
+                    setTimeout(() => {
+                        statusDiv.innerHTML = originalContent;
+                    }, 3000);
+                } else {
+                    alert(`❌ Error: Could not get download URL for ${fileName}`);
+                }
+            } catch (error) {
+                console.error('Download error:', error);
+                alert(`❌ Error downloading ${fileName}: ${error.message}`);
+            }
+        }
+
+        async function viewFile(fileId, fileName) {
+            try {
+                const token = localStorage.getItem('token');
+                
+                // First get file info to check if it can be previewed
+                const infoResponse = await fetch(`/admin/sharefile/file/${fileId}/info`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const fileInfo = await infoResponse.json();
+                
+                if (fileInfo.status === 'success') {
+                    const file = fileInfo.file;
+                    
+                    // Get download URL for viewing
+                    const urlResponse = await fetch(`/admin/sharefile/file/${fileId}/download-url`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const urlData = await urlResponse.json();
+                    
+                    if (urlData.status === 'success' && urlData.download_url) {
+                        // Check if file can be previewed in browser
+                        const mimeType = file.mime_type || '';
+                        const extension = file.extension || '';
+                        
+                        if (mimeType.startsWith('image/') || 
+                            mimeType === 'application/pdf' || 
+                            mimeType.startsWith('text/') ||
+                            extension.toLowerCase().match(/\\.(pdf|jpg|jpeg|png|gif|txt|html|css|js|json)$/)) {
+                            
+                            // Open in new window for preview
+                            const previewWindow = window.open(urlData.download_url, '_blank');
+                            if (!previewWindow) {
+                                alert('❌ Pop-up blocked. Please allow pop-ups for file viewing or use download instead.');
+                            } else {
+                                // Show success message
+                                const statusDiv = document.getElementById('sharefileStatus');
+                                const originalContent = statusDiv.innerHTML;
+                                statusDiv.innerHTML = `<span style="color: #17a2b8;">👁️ Opening: ${fileName}</span>`;
+                                setTimeout(() => {
+                                    statusDiv.innerHTML = originalContent;
+                                }, 3000);
+                            }
+                        } else {
+                            // Show file info and offer download
+                            const info = `📄 File Information: ${fileName}\\n\\n` +
+                                        `📏 Size: ${file.size_display}\\n` +
+                                        `📅 Modified: ${file.modified}\\n` +
+                                        `🔧 Type: ${file.mime_type || 'Unknown'}\\n\\n` +
+                                        `❓ This file type cannot be previewed in the browser.\\n` +
+                                        `Would you like to download it instead?`;
+                            
+                            if (confirm(info)) {
+                                downloadFile(fileId, fileName);
+                            }
+                        }
+                    } else {
+                        alert(`❌ Error: Could not get file URL for ${fileName}`);
+                    }
+                } else {
+                    alert(`❌ Error: Could not get file information for ${fileName}`);
+                }
+            } catch (error) {
+                console.error('View error:', error);
+                alert(`❌ Error viewing ${fileName}: ${error.message}`);
+            }
+        }
+
         function assignFileToSpa(fileId, fileName) {
             // TODO: Implement file assignment to spa clients
             alert(`📄 Assign File: ${fileName}\n\n🔗 File ID: ${fileId}\n\n🚀 File assignment to spa clients will be implemented next!\n\nFeatures planned:\n• Select target spa client\n• Assign for digital signing\n• Track document status\n• Automated notifications`);

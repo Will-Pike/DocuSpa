@@ -625,6 +625,116 @@ async def test_sharefile_connection(
             "recommendation": "Check your ShareFile account status and try refreshing the token"
         }
 
+@router.get("/sharefile/file/{file_id}/download-url")
+async def get_file_download_url(
+    file_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get ShareFile download URL for a specific file"""
+    if current_user.role.value != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Get organization-wide ShareFile credentials
+    from app.models.sharefile import ShareFileCredentials
+    
+    credentials = db.query(ShareFileCredentials).filter(
+        ShareFileCredentials.organization_wide == True,
+        ShareFileCredentials.is_active == True
+    ).first()
+    
+    if not credentials:
+        raise HTTPException(status_code=404, detail="ShareFile not configured")
+    
+    # Initialize ShareFile API
+    sf_api = ShareFileAPI()
+    sf_api.access_token = credentials.access_token
+    sf_api.refresh_token = credentials.refresh_token
+    sf_api.subdomain = credentials.subdomain
+    sf_api.apicp = credentials.apicp
+    sf_api.appcp = credentials.appcp
+    
+    try:
+        # Get download link from ShareFile API
+        download_response = sf_api._make_request("GET", f"/Items({file_id})/Download", db_session=db, user_id=current_user.id)
+        
+        if download_response and download_response.get('url'):
+            return {
+                "status": "success",
+                "download_url": download_response['url'],
+                "file_id": file_id
+            }
+        else:
+            # Try alternative endpoint
+            file_info = sf_api._make_request("GET", f"/Items({file_id})", db_session=db, user_id=current_user.id)
+            if file_info and file_info.get('url'):
+                return {
+                    "status": "success", 
+                    "download_url": file_info['url'],
+                    "file_id": file_id
+                }
+            else:
+                raise HTTPException(status_code=404, detail="Download URL not available")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting download URL: {str(e)}")
+
+@router.get("/sharefile/file/{file_id}/info")
+async def get_file_info(
+    file_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get detailed ShareFile file information"""
+    if current_user.role.value != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Get organization-wide ShareFile credentials
+    from app.models.sharefile import ShareFileCredentials
+    
+    credentials = db.query(ShareFileCredentials).filter(
+        ShareFileCredentials.organization_wide == True,
+        ShareFileCredentials.is_active == True
+    ).first()
+    
+    if not credentials:
+        raise HTTPException(status_code=404, detail="ShareFile not configured")
+    
+    # Initialize ShareFile API
+    sf_api = ShareFileAPI()
+    sf_api.access_token = credentials.access_token
+    sf_api.refresh_token = credentials.refresh_token
+    sf_api.subdomain = credentials.subdomain
+    sf_api.apicp = credentials.apicp
+    sf_api.appcp = credentials.appcp
+    
+    try:
+        # Get file information
+        file_info = sf_api._make_request("GET", f"/Items({file_id})", db_session=db, user_id=current_user.id)
+        
+        if file_info:
+            return {
+                "status": "success",
+                "file": {
+                    "id": file_info.get('Id'),
+                    "name": file_info.get('Name'),
+                    "type": file_info.get('Type'),
+                    "size": file_info.get('FileSizeBytes', 0),
+                    "size_display": f"{file_info.get('FileSizeBytes', 0) / (1024*1024):.2f} MB" if file_info.get('FileSizeBytes') else "Unknown",
+                    "created": file_info.get('CreationDate'),
+                    "modified": file_info.get('LastWriteTime'),
+                    "download_url": file_info.get('url'),
+                    "mime_type": file_info.get('MimeType', ''),
+                    "extension": file_info.get('Extension', ''),
+                    "can_preview": file_info.get('MimeType', '').startswith(('image/', 'application/pdf', 'text/'))
+                }
+            }
+        else:
+            raise HTTPException(status_code=404, detail="File not found")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting file info: {str(e)}")
+
 @router.get("/sharefile/folders") 
 async def get_sharefile_folders(current_user: User = Depends(get_current_user)):
     """Get ShareFile folder structure for document organization"""
