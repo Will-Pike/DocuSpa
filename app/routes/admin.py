@@ -383,8 +383,30 @@ async def get_sharefile_files(
         folders = []
         
         for item in items:
-            # Get item type - ShareFile uses different type values
+            # Get item type - ShareFile uses different type values and field names
             item_type = item.get('Type', '').lower()
+            
+            # ShareFile sometimes uses different field names for type detection
+            if not item_type:
+                # Check for odata.type field (common in ShareFile API)
+                odata_type = item.get('odata.type', item.get('@odata.type', ''))
+                if 'folder' in odata_type.lower():
+                    item_type = 'folder'
+                elif 'file' in odata_type.lower():
+                    item_type = 'file'
+                # Check if item has children (indicates folder)
+                elif 'Children' in item or item.get('HasChildren', False):
+                    item_type = 'folder'
+                # Check file extension (indicates file)
+                elif '.' in item.get('Name', ''):
+                    item_type = 'file'
+                # Check if FileSizeBytes exists and is > 0 (usually files)
+                elif item.get('FileSizeBytes', 0) > 0:
+                    item_type = 'file'
+                else:
+                    # Default to file if we can't determine
+                    item_type = 'file'
+            
             item_name = item.get('Name', 'Unknown')
             item_size = item.get('FileSizeBytes', 0)
             

@@ -79,23 +79,30 @@ def debug_sharefile_structure():
                         print(f"      Type: {item_type}")
                         print(f"      Size: {item_size} bytes")
                         
-                        # If it's a folder, let's see what's inside
-                        if item_type == 'Folder':
-                            print(f"\n      🔍 Looking inside folder '{item_name}'...")
-                            folder_contents = sf_api.get_items(item_id)
-                            if folder_contents:
-                                folder_items = folder_contents.get('value', [])
-                                if not folder_items and isinstance(folder_contents, list):
-                                    folder_items = folder_contents
+                        # Try to navigate into the item (regardless of type)
+                        print(f"\n      🔍 Attempting to navigate into '{item_name}'...")
+                        try:
+                            nav_contents = sf_api.get_items(item_id)
+                            if nav_contents:
+                                nav_items = nav_contents.get('value', [])
+                                if not nav_items and isinstance(nav_contents, list):
+                                    nav_items = nav_contents
                                 
-                                print(f"         Found {len(folder_items)} items in folder")
-                                for j, folder_item in enumerate(folder_items):
-                                    f_type = folder_item.get('Type', 'Unknown')
-                                    f_name = folder_item.get('Name', 'Unknown')
-                                    f_size = folder_item.get('FileSizeBytes', 0)
-                                    print(f"         📄 Item {j+1}: {f_name} ({f_type}) - {f_size} bytes")
+                                if nav_items:
+                                    print(f"         ✅ Found {len(nav_items)} items inside '{item_name}'")
+                                    print(f"         → This means '{item_name}' is actually a FOLDER")
+                                    for j, nav_item in enumerate(nav_items):
+                                        n_type = nav_item.get('Type', 'Unknown')
+                                        n_name = nav_item.get('Name', 'Unknown')
+                                        n_size = nav_item.get('FileSizeBytes', 0)
+                                        n_size_mb = n_size / (1024 * 1024) if n_size > 0 else 0
+                                        print(f"         📄 Item {j+1}: {n_name} ({n_type}) - {n_size_mb:.2f} MB")
+                                else:
+                                    print(f"         📂 '{item_name}' is navigable but empty")
                             else:
-                                print("         ❌ Could not get folder contents")
+                                print(f"         📄 '{item_name}' is not navigable - it's a FILE")
+                        except Exception as nav_error:
+                            print(f"         📄 Navigation failed: {nav_error} - '{item_name}' is likely a FILE")
                 else:
                     print("❌ Could not get home folder children")
             else:
