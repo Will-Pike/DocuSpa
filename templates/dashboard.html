@@ -433,7 +433,7 @@
                     foldersDiv.innerHTML = data.folders.map(folder => `
                         <div style="padding: 0.75rem; border: 1px solid #ddd; margin: 0.25rem 0; border-radius: 6px; cursor: pointer; background: #f8f9fa; transition: all 0.2s;" 
                              onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f8f9fa'"
-                             onclick="loadFolderContents('${folder.id}')">
+                             onclick="loadFolderContents('${folder.id}', '${folder.name}')">
                             <div style="display: flex; align-items: center;">
                                 <span style="margin-right: 8px; font-size: 1.2em;">📁</span>
                                 <span style="font-weight: 500;">${folder.name}</span>
@@ -492,9 +492,91 @@
             return new Date(dateString).toLocaleDateString();
         }
         
-        function loadFolderContents(folderId) {
-            // TODO: Implement folder navigation - Enhanced coming soon!
-            alert(`📁 Loading folder ${folderId}\n\n🚀 Enhanced folder navigation coming in the next update!\n\nFeatures planned:\n• Browse subfolders\n• File previews\n• Bulk operations\n• Search within folders`);
+        async function loadFolderContents(folderId, folderName = 'folder') {
+            try {
+                // Show loading state
+                document.getElementById('sharefileStatus').innerHTML = `<span style="color: #007bff;">🔄 Loading folder contents...</span>`;
+                
+                const response = await fetch(`/admin/sharefile/files?folder_id=${folderId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    // Update status to show we're inside a folder
+                    let statusText = `<span style="color: #28a745;">✅ ShareFile Connected</span> - Inside folder: <strong>${folderName}</strong> (${data.total_items} items)`;
+                    document.getElementById('sharefileStatus').innerHTML = statusText;
+                    
+                    // Add back button for folders
+                    const foldersDiv = document.getElementById('sharefileFolders');
+                    let folderHtml = `
+                        <div style="padding: 0.75rem; border: 1px solid #007bff; margin: 0.25rem 0; border-radius: 6px; cursor: pointer; background: #e3f2fd; transition: all 0.2s;" 
+                             onclick="loadShareFileFiles()">
+                            <div style="display: flex; align-items: center;">
+                                <span style="margin-right: 8px; font-size: 1.2em;">⬅️</span>
+                                <span style="font-weight: 500; color: #007bff;">Back to root folder</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add subfolders if any
+                    if (data.folders && data.folders.length > 0) {
+                        folderHtml += data.folders.map(folder => `
+                            <div style="padding: 0.75rem; border: 1px solid #ddd; margin: 0.25rem 0; border-radius: 6px; cursor: pointer; background: #f8f9fa; transition: all 0.2s;" 
+                                 onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f8f9fa'"
+                                 onclick="loadFolderContents('${folder.id}', '${folder.name}')">
+                                <div style="display: flex; align-items: center;">
+                                    <span style="margin-right: 8px; font-size: 1.2em;">�</span>
+                                    <span style="font-weight: 500;">${folder.name}</span>
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        folderHtml += '<div style="color: #666; font-style: italic; padding: 1rem; text-align: center;">No subfolders found</div>';
+                    }
+                    
+                    foldersDiv.innerHTML = folderHtml;
+                    
+                    // Render files in this folder
+                    const filesDiv = document.getElementById('sharefileFiles');
+                    if (data.files && data.files.length > 0) {
+                        filesDiv.innerHTML = data.files.map(file => `
+                            <div style="padding: 0.75rem; border: 1px solid #ddd; margin: 0.25rem 0; border-radius: 6px; background: #f8f9fa; transition: all 0.2s;"
+                                 onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f8f9fa'">
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 500; display: flex; align-items: center;">
+                                            <span style="margin-right: 8px; font-size: 1.1em;">📄</span>
+                                            ${file.name}
+                                        </div>
+                                        <div style="font-size: 0.875rem; color: #666; margin-top: 4px;">
+                                            📏 ${file.size_display || formatFileSize(file.size)} | 📅 ${file.modified || 'Unknown'}
+                                        </div>
+                                    </div>
+                                    <div style="margin-left: 10px;">
+                                        <button onclick="assignFileToSpa('${file.id}', '${file.name}')" 
+                                                style="background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
+                                            Assign
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        filesDiv.innerHTML = '<div style="color: #666; font-style: italic; padding: 1rem; text-align: center;">No files found in this folder</div>';
+                    }
+                } else {
+                    // Handle error
+                    document.getElementById('sharefileStatus').innerHTML = `<span style="color: #dc3545;">❌ Error loading folder: ${data.message}</span>`;
+                }
+                
+            } catch (error) {
+                document.getElementById('sharefileStatus').innerHTML = `<span style="color: #dc3545;">❌ Error loading folder contents</span>`;
+                console.error('Error loading folder contents:', error);
+            }
         }
         
         function assignFileToSpa(fileId, fileName) {
