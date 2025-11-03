@@ -626,14 +626,40 @@
                 const data = await response.json();
                 
                 if (data.status === 'success' && data.download_url) {
-                    // Create a temporary link to trigger download
-                    const link = document.createElement('a');
-                    link.href = data.download_url;
-                    link.download = fileName;
-                    link.target = '_blank';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                    // Handle different download methods
+                    if (data.method === 'proxy' || data.download_url.startsWith('/admin')) {
+                        // For proxy downloads, create a form to submit with authentication
+                        const form = document.createElement('form');
+                        form.method = 'GET';
+                        form.action = data.download_url;
+                        form.target = '_blank';
+                        
+                        // Add authorization header via a hidden iframe approach
+                        // Actually, let's use fetch with blob for proxy downloads
+                        fetch(data.download_url, {
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        }).then(response => response.blob()).then(blob => {
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = fileName;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+                        });
+                    } else {
+                        // For direct ShareFile URLs, use the link approach
+                        const link = document.createElement('a');
+                        link.href = data.download_url;
+                        link.download = fileName;
+                        link.target = '_blank';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }
                     
                     // Show success message
                     const statusDiv = document.getElementById('sharefileStatus');

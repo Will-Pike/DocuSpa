@@ -655,29 +655,121 @@ async def get_file_download_url(
     sf_api.appcp = credentials.appcp
     
     try:
-        # Get download link from ShareFile API
-        download_response = sf_api._make_request("GET", f"/Items({file_id})/Download", db_session=db, user_id=current_user.id)
+        # Try multiple ShareFile download endpoints to get a working URL
+        download_url = None
         
-        if download_response and download_response.get('url'):
-            return {
-                "status": "success",
-                "download_url": download_response['url'],
-                "file_id": file_id
-            }
-        else:
-            # Try alternative endpoint
-            file_info = sf_api._make_request("GET", f"/Items({file_id})", db_session=db, user_id=current_user.id)
-            if file_info and file_info.get('url'):
-                return {
-                    "status": "success", 
-                    "download_url": file_info['url'],
-                    "file_id": file_id
-                }
-            else:
-                raise HTTPException(status_code=404, detail="Download URL not available")
+        # Method 1: Try the /Download endpoint with redirect
+        try:
+            download_response = sf_api._make_request("GET", f"/Items({file_id})/Download", db_session=db, user_id=current_user.id)
+            if download_response:
+                # Check for different URL fields ShareFile might use
+                download_url = (download_response.get('DownloadUrl') or 
+                              download_response.get('url') or 
+                              download_response.get('Uri') or
+                              download_response.get('RedirectUrl'))
+        except Exception as e:
+            print(f"Download endpoint failed: {e}")
+        
+        # Method 2: Try getting file info and look for download links
+        if not download_url:
+            try:
+                file_info = sf_api._make_request("GET", f"/Items({file_id})", db_session=db, user_id=current_user.id)
+                if file_info:
+                    download_url = (file_info.get('DownloadUrl') or 
+                                  file_info.get('url') or 
+                                  file_info.get('Uri'))
+            except Exception as e:
+                print(f"File info endpoint failed: {e}")
+        
+        # Method 3: Create a proxy download URL through our server
+        if not download_url:
+            # Return our own proxy endpoint that will stream the file
+            download_url = f"/admin/sharefile/file/{file_id}/proxy-download"
+            
+        return {
+            "status": "success",
+            "download_url": download_url,
+            "file_id": file_id,
+            "method": "proxy" if download_url.startswith("/admin") else "direct"
+        }
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting download URL: {str(e)}")
+
+@router.get("/sharefile/file/{file_id}/proxy-download")
+async def proxy_download_file(
+    file_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Proxy download for ShareFile - streams file with authentication"""
+    if current_user.role.value != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Get organization-wide ShareFile credentials
+    from app.models.sharefile import ShareFileCredentials
+    
+    credentials = db.query(ShareFileCredentials).filter(
+        ShareFileCredentials.organization_wide == True,
+        ShareFileCredentials.is_active == True
+    ).first()
+    
+    if not credentials:
+        raise HTTPException(status_code=404, detail="ShareFile not configured")
+    
+    # Initialize ShareFile API
+    sf_api = ShareFileAPI()
+    sf_api.access_token = credentials.access_token
+    sf_api.refresh_token = credentials.refresh_token
+    sf_api.subdomain = credentials.subdomain
+    sf_api.apicp = credentials.apicp
+    sf_api.appcp = credentials.appcp
+    
+    try:
+        import requests
+        from fastapi.responses import StreamingResponse
+        
+        # Get the file content from ShareFile with authentication
+        base_url = f"https://{credentials.subdomain}.{credentials.apicp}/sf/v3"
+        download_url = f"{base_url}/Items({file_id})/Download"
+        
+        headers = {
+            "Authorization": f"Bearer {credentials.access_token}",
+            "Accept": "*/*"
+        }
+        
+        # Make the request to ShareFile
+        response = requests.get(download_url, headers=headers, stream=True)
+        
+        # Handle token refresh if needed
+        if response.status_code == 401 and credentials.refresh_token:
+            # Try to refresh the token
+            if sf_api.refresh_access_token(db, current_user.id):
+                headers["Authorization"] = f"Bearer {sf_api.access_token}"
+                response = requests.get(download_url, headers=headers, stream=True)
+        
+        if response.status_code == 200:
+            # Get file info for proper filename
+            file_info = sf_api._make_request("GET", f"/Items({file_id})", db_session=db, user_id=current_user.id)
+            filename = file_info.get('Name', f'file_{file_id}') if file_info else f'file_{file_id}'
+            
+            # Return streaming response
+            def generate():
+                for chunk in response.iter_content(chunk_size=8192):
+                    yield chunk
+            
+            return StreamingResponse(
+                generate(),
+                media_type=response.headers.get('content-type', 'application/octet-stream'),
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}"'
+                }
+            )
+        else:
+            raise HTTPException(status_code=response.status_code, detail=f"ShareFile download failed: {response.text}")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error downloading file: {str(e)}")
 
 @router.get("/sharefile/file/{file_id}/info")
 async def get_file_info(
