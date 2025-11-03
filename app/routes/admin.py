@@ -139,6 +139,20 @@ async def get_sharefile_auth_url(current_user: User = Depends(get_current_user))
         raise HTTPException(status_code=403, detail="Admin access required")
     
     sf_api = ShareFileAPI()
+    
+    # Debug: Check if OAuth2 credentials are loaded
+    if not sf_api.client_id or not sf_api.redirect_uri:
+        missing = []
+        if not sf_api.client_id:
+            missing.append("SHAREFILE_CLIENT_ID")
+        if not sf_api.redirect_uri:
+            missing.append("SHAREFILE_REDIRECT_URI")
+        
+        raise HTTPException(
+            status_code=500, 
+            detail=f"ShareFile OAuth2 not configured. Missing environment variables: {', '.join(missing)}. Please ensure .env file has SHAREFILE_CLIENT_ID and SHAREFILE_REDIRECT_URI set."
+        )
+    
     auth_url = sf_api.get_authorization_url(state="admin_setup")
     
     return {
