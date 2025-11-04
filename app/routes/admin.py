@@ -696,15 +696,15 @@ async def get_file_download_url(
                 print(f"File info endpoint failed: {e}")
         
         # Method 3: Create a proxy download URL through our server
-        if not download_url:
-            # Return our own proxy endpoint that will stream the file
-            download_url = f"/admin/sharefile/file/{file_id}/proxy-download"
-            
+        # For now, always use proxy since direct ShareFile URLs require authentication
+        download_url = f"/admin/sharefile/file/{file_id}/proxy-download"
+        
         return {
             "status": "success",
             "download_url": download_url,
             "file_id": file_id,
-            "method": "proxy" if download_url.startswith("/admin") else "direct"
+            "method": "proxy",
+            "note": "Using server proxy for authenticated download"
         }
             
     except Exception as e:

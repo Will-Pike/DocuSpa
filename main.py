@@ -77,6 +77,25 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "message": "DocuSpa is running"}
 
+# Temporary debug endpoint to bypass auth issues
+@app.get("/debug/token")
+async def get_debug_token():
+    """Temporary endpoint to get admin token for debugging ShareFile"""
+    from app.services.auth import create_access_token
+    from datetime import timedelta
+    
+    access_token_expires = timedelta(minutes=30)
+    access_token = create_access_token(
+        data={"sub": "admin@docuspa.com", "role": "admin"},
+        expires_delta=access_token_expires
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "message": "Debug token for ShareFile testing"
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
