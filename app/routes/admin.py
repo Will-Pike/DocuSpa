@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List
@@ -220,11 +220,13 @@ async def get_sharefile_status(
         "message": "ShareFile connection is healthy" if is_valid else "ShareFile token needs refresh"
     }
 
+@router.get("/sharefile/oauth/callback")
 @router.post("/sharefile/callback")
 async def sharefile_oauth_callback(
-    code: str,
-    subdomain: str,
-    apicp: str,
+    request: Request,
+    code: str = None,
+    subdomain: str = None,
+    apicp: str = None,
     appcp: str = None,
     state: str = None,
     current_user: User = Depends(get_current_user),
@@ -233,6 +235,22 @@ async def sharefile_oauth_callback(
     """Handle ShareFile OAuth2 callback and store credentials"""
     if current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Debug: Log callback parameters
+    print(f"ShareFile OAuth callback received:")
+    print(f"  Code: {code[:20] if code else None}...")
+    print(f"  Subdomain: {subdomain}")
+    print(f"  APICP: {apicp}")
+    print(f"  APPCP: {appcp}")
+    print(f"  State: {state}")
+    
+    # Validate required parameters
+    if not code:
+        raise HTTPException(status_code=400, detail="Missing authorization code")
+    if not subdomain:
+        raise HTTPException(status_code=400, detail="Missing subdomain parameter")
+    if not apicp:
+        raise HTTPException(status_code=400, detail="Missing apicp parameter")
     
     sf_api = ShareFileAPI()
     
